@@ -78,20 +78,42 @@ subprocess directly): stop and add a method on the backend instead.
   - Upgrade: `uv add <pkg> --upgrade-package <pkg>`.
 - **Framework**: `textual`, `textual-diff-view`, `watchfiles`,
   `pyperclip`.
-- **Testing**: `pytest`, `pytest-asyncio`, `pytest-textual-snapshot`.
-- **Lint / format**: `ruff` (check + format).
+- **Testing**: `pytest`, `pytest-asyncio`, `pytest-textual-snapshot`,
+  `pytest-timeout`. `asyncio_mode = "auto"` — don't decorate async
+  tests with `@pytest.mark.asyncio`, they're picked up automatically.
+- **Lint**: `ruff` pinned to `0.14.3`. Config is in `pyproject.toml`:
+  line-length 120, selects `E F B I UP SIM RUF`, ignores
+  `RUF001-003 E501`. Per-file ignores in `tests/**`: `B`, `SIM`.
+  `target-version = "py314"` — ruff's `UP` rules will rewrite code to
+  3.14 idioms; do not resist them.
+- **Format**: `ruff format` (not black, not isort; ruff handles both).
+  Imports are sorted by `ruff` with `known-first-party = ["dff"]`.
+- **Type check**: `ty` (Astral's type checker). Config in
+  `pyproject.toml`: `python-version = "3.14"`, strict rules for
+  `possibly-unresolved-reference`, `unused-ignore-comment`,
+  `redundant-cast`. A single violation fails CI.
+- **Suppressing a warning**: use `# ty: ignore[<rule>]` or
+  `# noqa: <CODE>`. Both must be **specific** — bare `# ty: ignore`
+  and bare `# noqa` are rejected (the first by `unused-ignore-comment`,
+  the second by ruff's `RUF100`).
+- **Scope**: ruff runs over everything; ty runs over `src/` and
+  `tests/`. `tests/__snapshots__/` is excluded from both.
 
-Common commands:
+Common commands (run in this order before declaring a task done):
 
 ```bash
-uv sync                         # install deps
-uv run dff                      # launch against the current repo
+uv sync                         # install / refresh deps
+uv run dff                      # manual smoke of the CLI
+uv run ruff check .             # lint — zero warnings required
+uv run ruff format .            # auto-fix whitespace / quotes
+uv run ty check                 # type check — zero errors required
 uv run pytest                   # all tests
 uv run pytest -x -k <expr>      # focused run, stop on first fail
 uv run pytest --snapshot-update # regenerate SVG snapshots (intentional UI changes)
-uv run ruff check .
-uv run ruff format .
 ```
+
+If `ruff format` makes changes, stage them in the same commit as the
+feature — never commit formatting noise separately.
 
 ---
 
@@ -153,8 +175,10 @@ Before reporting a feature as complete:
 
 - [ ] All new test cases exist and pass.
 - [ ] Relevant boxes in `docs/testing.md` flipped to `[x]`.
-- [ ] `uv run pytest` is green end to end.
-- [ ] `uv run ruff check .` clean.
+- [ ] `uv run ruff check .` — clean, zero warnings.
+- [ ] `uv run ruff format --check .` — no pending formatting.
+- [ ] `uv run ty check` — clean, zero errors.
+- [ ] `uv run pytest` — green end to end.
 - [ ] Snapshot SVGs updated and reviewed (if UI changed).
 - [ ] README / README.zh.md updated if behavior visible to users changed.
 - [ ] No `[ ]` that was `[x]` has been flipped back (= regression).
