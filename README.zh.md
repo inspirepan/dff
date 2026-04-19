@@ -223,7 +223,7 @@ TOML，加载顺序如下（后者覆盖前者）：
 
 ## 安装
 
-需要 Python 3.11+。
+需要 Python 3.14+。
 
 ```bash
 uv tool install dff          # once published

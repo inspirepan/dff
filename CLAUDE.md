@@ -69,7 +69,8 @@ subprocess directly): stop and add a method on the backend instead.
 
 ## Stack & tooling
 
-- **Python**: 3.11+ (`tomllib` is stdlib; don't add `tomli`).
+- **Python**: 3.14+ (personal project, aggressive floor; stdlib only,
+  no `tomli` / `typing_extensions` back-compat imports).
 - **Package manager**: `uv`, always. Never `pip`, never edit
   `requirements.txt` by hand.
   - Add a dep: `uv add <pkg>`.

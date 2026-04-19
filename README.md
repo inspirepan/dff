@@ -304,7 +304,7 @@ A fully-commented `config.example.toml` ships with the project.
 
 ## Installation
 
-Requires Python 3.11+.
+Requires Python 3.14+.
 
 ```bash
 uv tool install dff          # once published
