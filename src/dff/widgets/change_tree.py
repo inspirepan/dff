@@ -65,7 +65,7 @@ class ChangeTree(Tree[NodeMeta]):
             else collapse_single_child_dirs
         )
         self._tree_theme = self._ui.resolved_tree_theme
-        self.ICON_NODE, self.ICON_NODE_EXPANDED = self._disclosure_icons()
+        self.ICON_NODE, self.ICON_NODE_EXPANDED = self._disclosure_icons()  # ty: ignore[invalid-assignment]
         self.guide_depth = 4
         self.show_root = False
         self.root.expand()
@@ -76,6 +76,12 @@ class ChangeTree(Tree[NodeMeta]):
         self.styles.scrollbar_color = scrollbar_color
         self.styles.scrollbar_color_hover = scrollbar_color
         self.styles.scrollbar_color_active = scrollbar_color
+        # Tint the rounded panel frame with the theme's faint `panel_border`
+        # token. `border` in app.tcss only sets the style (round); the color
+        # must be set here because `$foreground X%` flattens to near-black
+        # under `textual-ansi`.
+        for edge in ("border_top", "border_right", "border_bottom", "border_left"):
+            setattr(self.styles, edge, ("round", self._tree_theme.panel_border))
         if self.root.children:
             self.move_cursor(self.root.children[0])
 
@@ -166,14 +172,14 @@ class ChangeTree(Tree[NodeMeta]):
             disclosure_style = base_style + Style.parse(self._tree_theme.disclosure)
             if style.bgcolor is not None:
                 disclosure_style += Style(bgcolor=style.bgcolor)
-            prefix: tuple[str, Style] = (
-                self.ICON_NODE_EXPANDED if node.is_expanded else self.ICON_NODE,
-                disclosure_style,
-            )
-        else:
-            prefix = ("", base_style)
-
-        return Text.assemble(prefix, left)
+            icon = self.ICON_NODE_EXPANDED if node.is_expanded else self.ICON_NODE
+            if isinstance(icon, Text):
+                prefix = icon.copy()
+                prefix.stylize_before(disclosure_style)
+            else:
+                prefix = Text(icon, style=disclosure_style)
+            return Text.assemble(prefix, left)
+        return Text.assemble(("", base_style), left)
 
     def _render_line(self, y: int, x1: int, x2: int, base_style: Style) -> Strip:
         tree_lines = self._tree_lines
@@ -402,32 +408,23 @@ class ChangeTree(Tree[NodeMeta]):
         label = node.label
         return label if isinstance(label, str) else label.plain
 
-    def _disclosure_icons(self) -> tuple[str, str]:
+    def _disclosure_icons(self) -> tuple[str | Text, str | Text]:
         if self._ui.tree_disclosure_style is TreeDisclosureStyle.TRIANGLES:
             return "▶ ", "▼ "
-        return "[+] ", "[-] "
-
-    def _uses_aligned_compact_guides(self) -> bool:
-        return self._ui.compact_tree_guides and self._ui.tree_disclosure_style is TreeDisclosureStyle.BRACKETS
+        # Single-char markers with a subtle background pill on the char only.
+        bg = Style(bgcolor=Color.parse(self._tree_theme.disclosure_bg))
+        return Text.assemble(("+", bg), " "), Text.assemble(("-", bg), " ")
 
     def _guide_chars(self, style: Style, hidden: bool) -> tuple[str, str, str, str]:
         lines: tuple[str, str, str, str]
         if not self.show_guides or hidden:
             lines = ("    ", "    ", "    ", "    ")
-        elif self._uses_aligned_compact_guides():
-            if style.bold:
-                lines = ("    ", " ┃  ", " ┗━ ", " ┣━ ")
-            elif style.underline2:
-                lines = ("    ", " ║  ", " ╚═ ", " ╠═ ")
-            else:
-                lines = ("    ", " │  ", " └─ ", " ├─ ")
+        elif style.bold:
+            lines = ("    ", "┃   ", "┗━━ ", "┣━━ ")
+        elif style.underline2:
+            lines = ("    ", "║   ", "╚══ ", "╠══ ")
         else:
-            if style.bold:
-                lines = ("    ", "┃   ", "┗━━ ", "┣━━ ")
-            elif style.underline2:
-                lines = ("    ", "║   ", "╚══ ", "╠══ ")
-            else:
-                lines = ("    ", "│   ", "└── ", "├── ")
+            lines = ("    ", "│   ", "└── ", "├── ")
         return cast("tuple[str, str, str, str]", lines)
 
     def _build_directory_tree(self, files: Sequence[FileChange]) -> DirectoryEntry:

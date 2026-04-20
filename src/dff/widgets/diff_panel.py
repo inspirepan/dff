@@ -21,9 +21,13 @@ from textual_diff_view import DiffView
 from textual_diff_view._diff_view import (
     DiffCode,
     DiffScrollContainer,
+    FoldedLineContent,
     LineAnnotations,
     LineContent,
     fill_lists,
+)
+from textual_diff_view._diff_view import (
+    Ellipsis as DiffEllipsis,
 )
 
 from dff.config import UISettings
@@ -32,9 +36,10 @@ from dff.theme import TreeThemeTokens
 
 Opcode = tuple[str, int, int, int, int]
 
-# Textual's default HighlightTheme underlines function names, which reads as
-# a stray link/error marker inside a dense diff view. Drop the attribute while
-# keeping the accent color so tokens still stand out from body text.
+# `HighlightTheme.STYLES` is overridden per-theme in
+# `TransparentDiffView.__init__`. We also clear the default `underline` attr
+# on function-name tokens at import time so they never render with a stray
+# link/error underline even before the first DiffView is constructed.
 HighlightTheme.STYLES[Token.Name.Function] = "$text-warning"
 HighlightTheme.STYLES[Token.Name.Function.Magic] = "$text-warning"
 
@@ -103,6 +108,26 @@ class _BlankFilledLineContent(LineContent):
         super().__init__(cleaned, line_styles, width)
 
 
+class _BlankFilledFoldedLineContent(FoldedLineContent):
+    """Wrap-mode counterpart to `_BlankFilledLineContent`.
+
+    `FoldedLineContent.render_strips` hatches `None` code lines with `╲` too
+    (the wrap-view sibling of the bug above). Replace them with empty content
+    before delegating, so the missing-line column renders blank in wrap mode.
+    """
+
+    def __init__(
+        self,
+        annotations: list[Content],
+        continuations: list[Content],
+        code_lines: list[Content | None],
+        line_styles: list[str],
+        code_lengths: list[int] | None = None,
+    ) -> None:
+        cleaned: list[Content | None] = [Content("") if line is None else line for line in code_lines]
+        super().__init__(annotations, continuations, cleaned, line_styles, code_lengths)
+
+
 class TransparentDiffView(DiffView):
     """DiffView subclass tuned for `textual-ansi` + a klaude-code-inspired palette.
 
@@ -127,6 +152,40 @@ class TransparentDiffView(DiffView):
 
     def __init__(self, *args: Any, theme: TreeThemeTokens, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
+        # Apply the theme's full syntax palette. Textual's default
+        # `HighlightTheme` routes every pygments token through generic
+        # theme variables (`$text-primary`, `$text-success`, ...), which
+        # under the `textual-ansi` app theme flatten to a muted 50%-sat
+        # ANSI palette that reads as low-contrast on the diff-add/remove
+        # backgrounds. Overwriting STYLES here replaces those variables
+        # with explicit hex values from the active `SyntaxPalette`.
+        # `HighlightTheme.STYLES` is global state; only one TreeTheme is
+        # active at a time so the overwrite is safe.
+        syntax = theme.syntax
+        HighlightTheme.STYLES[Token.Name] = syntax.identifier
+        HighlightTheme.STYLES[Token.Name.Variable] = syntax.variable
+        HighlightTheme.STYLES[Token.Name.Function] = syntax.function
+        HighlightTheme.STYLES[Token.Name.Function.Magic] = syntax.function
+        HighlightTheme.STYLES[Token.Name.Class] = f"{syntax.class_name} bold"
+        HighlightTheme.STYLES[Token.Name.Builtin] = syntax.builtin
+        HighlightTheme.STYLES[Token.Name.Builtin.Pseudo] = f"{syntax.builtin} italic"
+        HighlightTheme.STYLES[Token.Name.Decorator] = f"{syntax.decorator} bold"
+        HighlightTheme.STYLES[Token.Name.Tag] = syntax.tag
+        HighlightTheme.STYLES[Token.Name.Attribute] = syntax.attribute
+        HighlightTheme.STYLES[Token.Name.Constant] = syntax.constant
+        HighlightTheme.STYLES[Token.Keyword] = syntax.keyword
+        HighlightTheme.STYLES[Token.Keyword.Namespace] = syntax.keyword_namespace
+        HighlightTheme.STYLES[Token.Keyword.Constant] = f"bold {syntax.keyword_constant}"
+        HighlightTheme.STYLES[Token.Keyword.Type] = f"{syntax.keyword} bold"
+        HighlightTheme.STYLES[Token.Literal.String] = syntax.string
+        HighlightTheme.STYLES[Token.Literal.String.Double] = syntax.string
+        HighlightTheme.STYLES[Token.Literal.String.Single] = syntax.string
+        HighlightTheme.STYLES[Token.Literal.String.Doc] = f"{syntax.comment} italic"
+        HighlightTheme.STYLES[Token.Literal.String.Backtick] = syntax.string
+        HighlightTheme.STYLES[Token.Literal.Number] = syntax.number
+        HighlightTheme.STYLES[Token.Comment] = f"{syntax.comment} italic"
+        HighlightTheme.STYLES[Token.Operator] = syntax.operator
+        HighlightTheme.STYLES[Token.Operator.Word] = f"bold {syntax.operator_word}"
         self._diff_add_char_bg = theme.diff_add_char_bg
         self._diff_remove_char_bg = theme.diff_remove_char_bg
         # Reuse the same muted blue that ChangeTree uses for change-group rows,
@@ -268,9 +327,10 @@ class TransparentDiffView(DiffView):
         # tracking the cursor when the user scrolls a long hunk past their
         # own content. Sharing one width across the whole file keeps every
         # hunk's horizontal offset aligned.
-        # Wrapping mode is unchanged — upstream handles that branch elsewhere.
+        # Wrapping mode is handled by `_compose_split_wrap_clean`, which is
+        # our hatch-free mirror of upstream's `_compose_split_wrap`.
         if self.wrap:
-            yield from self._compose_split_wrap()
+            yield from self._compose_split_wrap_clean()
             return
 
         lines_a, lines_b = self.highlighted_code_lines
@@ -375,6 +435,143 @@ class TransparentDiffView(DiffView):
                 with containers.HorizontalGroup():
                     yield ExpandableEllipsis(gap_index, hidden, background=self._ellipsis_bg)
                     yield ExpandableEllipsis(gap_index, hidden, background=self._ellipsis_bg)
+
+    def _compose_split_wrap_clean(self) -> ComposeResult:
+        # Mirror of upstream `_compose_split_wrap` that swaps the two `╲`
+        # hatches (annotation column + line-number gutter) for blanks and
+        # replaces `FoldedLineContent` with `_BlankFilledFoldedLineContent`
+        # so missing code rows also render blank. Everything else follows
+        # upstream verbatim.
+        lines_a, lines_b = self.highlighted_code_lines
+
+        annotation_hatch = Content(" " * 3)
+        annotation_blank = Content(" " * 3)
+
+        def make_annotation(annotation: str, highlight_annotation: str) -> Content:
+            if not self.annotations:
+                return (
+                    Content.blank(1)
+                    .stylize(self.LINE_STYLES[annotation])
+                    .stylize(self.ANNOTATION_STYLES.get(annotation, ""))
+                )
+            if annotation == highlight_annotation:
+                return (
+                    Content(f" {annotation} ")
+                    .stylize(self.LINE_STYLES[annotation])
+                    .stylize(self.ANNOTATION_STYLES.get(annotation, ""))
+                )
+            if annotation == "/":
+                return annotation_hatch
+            return annotation_blank
+
+        for last, group in loop_last(self.grouped_opcodes):
+            line_numbers_a: list[int | None] = []
+            line_numbers_b: list[int | None] = []
+            annotations_a: list[str] = []
+            annotations_b: list[str] = []
+            code_lines_a: list[Content | None] = []
+            code_lines_b: list[Content | None] = []
+            for tag, i1, i2, j1, j2 in group:
+                if tag == "equal":
+                    for line_offset, line in enumerate(lines_a[i1:i2], 1):
+                        annotations_a.append(" ")
+                        annotations_b.append(" ")
+                        line_numbers_a.append(i1 + line_offset)
+                        line_numbers_b.append(j1 + line_offset)
+                        code_lines_a.append(line)
+                        code_lines_b.append(line)
+                else:
+                    if tag in {"delete", "replace"}:
+                        for line_number, line in enumerate(lines_a[i1:i2], i1 + 1):
+                            annotations_a.append("-")
+                            line_numbers_a.append(line_number)
+                            code_lines_a.append(line)
+                    if tag in {"insert", "replace"}:
+                        for line_number, line in enumerate(lines_b[j1:j2], j1 + 1):
+                            annotations_b.append("+")
+                            line_numbers_b.append(line_number)
+                            code_lines_b.append(line)
+                    fill_lists(code_lines_a, code_lines_b, None)
+                    fill_lists(annotations_a, annotations_b, "/")
+                    fill_lists(line_numbers_a, line_numbers_b, None)
+
+            if line_numbers_a or line_numbers_b:
+                line_number_width = max(
+                    0 if line_no is None else len(str(line_no)) for line_no in (line_numbers_a + line_numbers_b)
+                )
+            else:
+                line_number_width = 1
+
+            hatch = Content(" " * (2 + line_number_width))
+
+            def format_number(
+                line_no: int | None,
+                annotation: str,
+                _width: int = line_number_width,
+                _hatch: Content = hatch,
+            ) -> Content:
+                return (
+                    _hatch
+                    if line_no is None
+                    else Content(f"▎{line_no:>{_width}} ")
+                    .stylize(self.NUMBER_STYLES[annotation], 1)
+                    .stylize(self.EDGE_STYLES[annotation], 0, 1)
+                )
+
+            code_lengths = [
+                max(
+                    0 if line_a is None else line_a.cell_length,
+                    0 if line_b is None else line_b.cell_length,
+                )
+                for line_a, line_b in zip(code_lines_a, code_lines_b, strict=True)
+            ]
+
+            with containers.HorizontalGroup(classes="diff-group"):
+                annotations = [
+                    Content.assemble(
+                        format_number(line_number, annotation),
+                        make_annotation(annotation, "-"),
+                    )
+                    for line_number, annotation in zip(line_numbers_a, annotations_a, strict=True)
+                ]
+                continuations = self._make_continuations(line_number_width + 2)
+                code_line_styles = [self.LINE_STYLES[annotation] for annotation in annotations_a]
+
+                with DiffScrollContainer():
+                    yield DiffCode(
+                        _BlankFilledFoldedLineContent(
+                            annotations,
+                            [continuations[annotate] for annotate in annotations_a],
+                            code_lines_a,
+                            code_line_styles,
+                            code_lengths=code_lengths,
+                        )
+                    )
+
+                annotations = [
+                    Content.assemble(
+                        format_number(line_number, annotation),
+                        make_annotation(annotation, "+"),
+                    )
+                    for line_number, annotation in zip(line_numbers_b, annotations_b, strict=True)
+                ]
+                code_line_styles = [self.LINE_STYLES[annotation] for annotation in annotations_b]
+
+                with DiffScrollContainer():
+                    yield DiffCode(
+                        _BlankFilledFoldedLineContent(
+                            annotations,
+                            [continuations[annotate] for annotate in annotations_b],
+                            code_lines_b,
+                            code_line_styles,
+                            code_lengths=code_lengths,
+                        )
+                    )
+
+            if not last:
+                with containers.HorizontalGroup():
+                    yield DiffEllipsis("⋮")
+                    yield DiffEllipsis("⋮")
 
     def _compose_unified_clean(self) -> ComposeResult:
         # Mirror of upstream `_compose_unified` (no-wrap) using the same
@@ -528,6 +725,11 @@ class DiffPanel(Vertical):
         self._body.styles.scrollbar_color = scrollbar_color
         self._body.styles.scrollbar_color_hover = scrollbar_color
         self._body.styles.scrollbar_color_active = scrollbar_color
+        # Tint the rounded panel frame with the theme's faint `panel_border`.
+        # See ChangeTree.on_mount for why we set this inline instead of in CSS.
+        border_color = self._ui.resolved_tree_theme.panel_border
+        for edge in ("border_top", "border_right", "border_bottom", "border_left"):
+            setattr(self.styles, edge, ("round", border_color))
         self._body.mount(Static("Select a file to view its diff", classes="diff-placeholder diff-empty"))
 
     def on_resize(self) -> None:

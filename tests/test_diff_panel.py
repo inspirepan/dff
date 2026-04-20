@@ -240,3 +240,26 @@ def test_syntax_theme_drops_underline_on_function_names() -> None:
 
     assert "underline" not in HighlightTheme.STYLES[Token.Name.Function]
     assert "underline" not in HighlightTheme.STYLES[Token.Name.Function.Magic]
+
+
+async def test_diff_panel_has_rounded_panel_border(tmp_path: Path) -> None:
+    sides = {
+        "src/a.py": FileSides(before="old\n", after="new\n"),
+        "src/b.bin": FileSides(before="", after="", binary=True),
+    }
+    backend = StubBackend(tmp_path, sides)
+    app = DffApp(backend.list_changes(), backend=backend, live_watch=False)
+
+    async with app.run_test(size=(180, 40)) as pilot:
+        await pilot.pause()
+        panel = app.query_one(DiffPanel)
+
+        # Panel is wrapped in a rounded `round`-border frame on all four sides
+        # so it reads as a sibling panel to the ChangeTree.
+        for edge in (
+            panel.styles.border_top,
+            panel.styles.border_right,
+            panel.styles.border_bottom,
+            panel.styles.border_left,
+        ):
+            assert edge[0] == "round"

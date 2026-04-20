@@ -125,9 +125,9 @@ uv run pytest -m smoke              # CI-only tmux smoke layer
 - [x] Ignored files (glob) render dimmed.
 - [x] Conflict files render with `!` badge in red.
 - [x] Uses compact guides so nested branches render as `└─` instead of `└──`.
-- [x] Uses `[+]` / `[-]` disclosure markers for collapsed / expanded tree nodes.
+- [x] Uses `+` / `-` disclosure markers (with a subtle `disclosure_bg` tint on
+      the char) for collapsed / expanded tree nodes.
 - [x] Mouse hover does not highlight rows or guides.
-- [x] Compact bracket guides align child rows under the `-` in `[-]`.
 - [x] Built-in dark tree tokens use `klaude-code` hex colors for disclosure,
       guides, and status badges.
 - [x] Focused tree rows add a background without overriding tokenized text
@@ -135,7 +135,8 @@ uv run pytest -m smoke              # CI-only tmux smoke layer
 - [x] File stats render as `(+a,-b)` with parens/comma in guides color.
 - [x] Status letter is right-aligned to the tree's visible right edge,
       with stats placed immediately before it.
-- [x] Tree panel draws a `vkey` right border tinted with the guides color.
+- [x] Tree panel is wrapped in a rounded `round`-border panel frame
+      (`╭─╮│╰─╯`) in a very faint gray.
 
 ### 4.2 Diff panel (`widgets/diff_panel.py`)
 
@@ -149,6 +150,8 @@ uv run pytest -m smoke              # CI-only tmux smoke layer
       text with a notice pill.
 - [x] DiffPanel and nested DiffView / .diff-group / VerticalScroll
       render with transparent backgrounds under `-transparent` mode.
+- [x] Diff panel is wrapped in a rounded `round`-border panel frame
+      (`╭─╮│╰─╯`) in a very faint gray, matching the tree panel.
 
 ### 4.3 Collapsible diff (`widgets/collapsible_diff.py`)
 
@@ -257,9 +260,9 @@ uv run pytest -m smoke              # CI-only tmux smoke layer
 
 ### 5.6 UI appearance settings
 
-- [x] `UISettings` defaults to transparent background, compact guides,
-      bracket disclosure markers, single-child path collapsing, and the
-      built-in dark tree tokens.
+- [x] `UISettings` defaults to transparent background, bracket disclosure
+      markers, single-child path collapsing, and the built-in dark tree
+      tokens.
 - [x] `DffApp` applies transparent / opaque mode from `UISettings`.
 - [x] `ChangeTree` applies built-in or custom tree color tokens from
       `UISettings`.

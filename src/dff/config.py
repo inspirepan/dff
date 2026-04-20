@@ -14,7 +14,6 @@ class TreeDisclosureStyle(StrEnum):
 @dataclass(frozen=True, slots=True)
 class UISettings:
     transparent_background: bool = True
-    compact_tree_guides: bool = True
     collapse_single_child_directories: bool = True
     tree_disclosure_style: TreeDisclosureStyle = TreeDisclosureStyle.BRACKETS
     tree_theme_name: BuiltinTreeThemeName = BuiltinTreeThemeName.DARK

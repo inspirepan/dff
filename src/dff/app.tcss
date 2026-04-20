@@ -48,7 +48,12 @@ ChangeTree {
     width: 38%;
     min-width: 30;
     height: 100%;
-    border: none;
+    /* Rounded panel wrapper using Textual's `round` border characters
+       (╭─╮│╰─╯). The border *color* is set inline in `on_mount` from the
+       active theme's `guides` token — under `textual-ansi`, percentage
+       foregrounds (e.g. `$foreground 20%`) flatten to near-black, so the
+       color must come from an explicit theme hex instead. */
+    border: round;
     color: ansi_default;
     /* Long change descriptions get truncated with `…` in `_render_line` so
        they never need horizontal scroll — pin overflow-x off to make that
@@ -61,6 +66,9 @@ DiffPanel {
     width: 1fr;
     height: 100%;
     background: transparent;
+    /* Matches ChangeTree's panel frame — see ChangeTree for the reason we
+       set the border color inline rather than via `$foreground X%`. */
+    border: round;
 }
 
 App.-opaque DiffPanel {

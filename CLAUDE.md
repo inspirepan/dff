@@ -154,10 +154,11 @@ feature — never commit formatting noise separately.
   `Static`-like widget renders one line of hints, its `render_line()` must
   pad the rest of the row with a transparent style; otherwise terminal-
   default fill can show up as dark / light blocks at the line edges.
-- **When using bracket disclosure markers like `[-]`, compact guides are
-  4-cell guides, not a shifted 3-cell tree.** Do not fake alignment by
-  shifting whole lines; render the guide strings so child rows align under
-  the `-` inside `[-]`.
+- **Disclosure markers are `+` / `-` chars with a subtle `disclosure_bg`
+  tint, not reversed and not wrapped in brackets.** Tree guides are plain
+  4-cell `├── ` style with no leading space; render the icon `Text` with
+  a bgcolor span on the marker char only and let the trailing space stay
+  untinted.
 - **Transparency bugs must be verified at the rendered-segment level.** Do
   not stop at `widget.styles.background`. Inspect `render_line()` segment
   styles and, if needed, `export_screenshot()` SVG output to confirm there

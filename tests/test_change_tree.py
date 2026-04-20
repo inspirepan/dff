@@ -12,7 +12,7 @@ from textual.widgets._tree import TreeNode
 from dff.app import DffApp
 from dff.config import TreeDisclosureStyle, UISettings
 from dff.models import Change, FileChange, HunkStats
-from dff.theme import TreeThemeTokens
+from dff.theme import DARK_SYNTAX, TreeThemeTokens
 from dff.widgets import ChangeTree
 
 
@@ -222,9 +222,9 @@ async def test_change_tree_uses_compact_guides() -> None:
         tree = app.query_one(ChangeTree)
 
         assert tree.guide_depth == 4
-        assert tree.render_line(1).text.startswith(" ├─ [-] src/")
-        assert tree.render_line(3).text.startswith(" │   └─ cli.py")
-        assert tree.render_line(4).text.startswith(" └─ [-] tests/")
+        assert tree.render_line(1).text.startswith("├── - src/")
+        assert tree.render_line(3).text.startswith("│   └── cli.py")
+        assert tree.render_line(4).text.startswith("└── - tests/")
 
 
 async def test_change_tree_right_aligns_status_and_stats() -> None:
@@ -244,15 +244,21 @@ async def test_change_tree_right_aligns_status_and_stats() -> None:
         assert "(+12,-3)  M  " in row
 
 
-async def test_change_tree_has_no_right_border() -> None:
+async def test_change_tree_has_rounded_panel_border() -> None:
     app = DffApp(sample_changes())
 
     async with app.run_test() as pilot:
         await pilot.pause()
         tree = app.query_one(ChangeTree)
 
-        # Right border removed — the blue scrollbar provides the separator now.
-        assert tree.styles.border_right[0] == ""
+        # Tree is wrapped in a rounded panel frame (╭─╮│╰─╯) on all four sides.
+        for edge in (
+            tree.styles.border_top,
+            tree.styles.border_right,
+            tree.styles.border_bottom,
+            tree.styles.border_left,
+        ):
+            assert edge[0] == "round"
 
 
 async def test_change_tree_uses_bracket_disclosure_markers() -> None:
@@ -262,13 +268,13 @@ async def test_change_tree_uses_bracket_disclosure_markers() -> None:
         await pilot.pause()
         tree = app.query_one(ChangeTree)
 
-        assert tree.render_line(0).text.startswith("[-] @")
-        assert tree.render_line(1).text.startswith(" ├─ [-] src/")
+        assert tree.render_line(0).text.startswith("- @")
+        assert tree.render_line(1).text.startswith("├── - src/")
 
         await pilot.press("j", "space")
         await pilot.pause()
 
-        assert tree.render_line(1).text.startswith(" ├─ [+] src/")
+        assert tree.render_line(1).text.startswith("├── + src/")
 
 
 async def test_change_tree_applies_custom_tokens_and_non_compact_guides() -> None:
@@ -289,6 +295,7 @@ async def test_change_tree_applies_custom_tokens_and_non_compact_guides() -> Non
         change_id="cyan",
         change_description="yellow",
         cursor_background="#222222",
+        disclosure_bg="#3a4250",
         diff_add_bg="#2b4938",
         diff_add_char_bg="#3d7b52",
         diff_add_text="#c8e6c9",
@@ -296,11 +303,12 @@ async def test_change_tree_applies_custom_tokens_and_non_compact_guides() -> Non
         diff_remove_char_bg="#8a4a52",
         diff_remove_text="#ffcdd2",
         change_row_bg="#2c3846",
+        panel_border="#3a4250",
+        syntax=DARK_SYNTAX,
     )
     app = TreeApp(
         sample_changes(),
         ui=UISettings(
-            compact_tree_guides=False,
             tree_disclosure_style=TreeDisclosureStyle.TRIANGLES,
             tree_theme=custom_tokens,
         ),
