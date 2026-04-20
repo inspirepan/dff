@@ -87,6 +87,12 @@ DiffHeader {
     color: $foreground 60%;
 }
 
+.diff-empty {
+    width: 100%;
+    height: 100%;
+    content-align: center middle;
+}
+
 /* Mouse/keyboard text selection: Textual pulls `selection_style` from
    `Screen.screen--selection`, NOT from the selected widget itself. Upstream
    default is `$primary 50%`, which renders as the saturated ANSI blue the

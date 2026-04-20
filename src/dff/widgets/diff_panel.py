@@ -516,11 +516,11 @@ class DiffPanel(Vertical):
 
     def on_mount(self) -> None:
         assert self._body is not None
-        # Keep the diff-body scrollbar in sync with the tree's blue scrollbar.
         scrollbar_color = self._ui.resolved_tree_theme.directory
         self._body.styles.scrollbar_color = scrollbar_color
         self._body.styles.scrollbar_color_hover = scrollbar_color
         self._body.styles.scrollbar_color_active = scrollbar_color
+        self._body.mount(Static("Select a file to view its diff", classes="diff-placeholder diff-empty"))
 
     def on_resize(self) -> None:
         # Re-evaluate split/unified whenever the panel resizes across the 80-col
@@ -558,6 +558,7 @@ class DiffPanel(Vertical):
         assert self._body is not None
         self._header.set_text(Text())
         await self._body.remove_children()
+        await self._body.mount(Static("Select a file to view its diff", classes="diff-placeholder diff-empty"))
         self._current_key = None
 
     def toggle_split(self) -> None:

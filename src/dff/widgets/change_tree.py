@@ -6,6 +6,7 @@ from pathlib import PurePosixPath
 from typing import ClassVar, cast
 
 from rich.color import Color
+from rich.segment import Segment
 from rich.style import Style
 from rich.text import Text
 from textual import events
@@ -35,6 +36,8 @@ class NodeMeta:
     # groups to give them visual breathing room. `_render_line` returns a
     # blank strip for them and cursor movement skips over them.
     is_spacer: bool = False
+    # Placeholder row shown when the change list is empty.
+    is_empty_placeholder: bool = False
 
 
 class ChangeTree(Tree[NodeMeta]):
@@ -121,11 +124,13 @@ class ChangeTree(Tree[NodeMeta]):
         if y < 0 or y >= len(self._tree_lines):
             return False
         node = self._tree_lines[y].path[-1]
-        return isinstance(node.data, NodeMeta) and node.data.is_spacer
+        return isinstance(node.data, NodeMeta) and (node.data.is_spacer or node.data.is_empty_placeholder)
 
     def _change_group_nodes(self) -> list[TreeNode[NodeMeta]]:
         return [
-            child for child in self.root.children if not (isinstance(child.data, NodeMeta) and child.data.is_spacer)
+            child
+            for child in self.root.children
+            if isinstance(child.data, NodeMeta) and not child.data.is_spacer and not child.data.is_empty_placeholder
         ]
 
     def _on_mouse_move(self, event: events.MouseMove) -> None:
@@ -182,6 +187,10 @@ class ChangeTree(Tree[NodeMeta]):
         row_data = row_node.data
         if isinstance(row_data, NodeMeta) and row_data.is_spacer:
             return Strip.blank(width, base_style)
+        if isinstance(row_data, NodeMeta) and row_data.is_empty_placeholder:
+            msg = "No changes"
+            style = Style.parse(self._tree_theme.guides)
+            return Strip([Segment(msg.center(width), style)], width)
 
         is_hover = self.hover_line >= 0 and any(node._hover for node in line.path)
 
@@ -293,6 +302,14 @@ class ChangeTree(Tree[NodeMeta]):
         return None
 
     def _build_tree(self) -> None:
+        if not self._changes:
+            placeholder = self.root.add(
+                "",
+                data=NodeMeta(left=Text(""), right=None, is_empty_placeholder=True),
+                expand=False,
+            )
+            placeholder.allow_expand = False
+            return
         for index, change in enumerate(self._changes):
             if index > 0:
                 # Blank spacer row between change groups so `[-] @ rwrslwnpmsxw …`
