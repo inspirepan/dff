@@ -154,6 +154,32 @@ def test_change_tree_reload_preserves_collapsed_group_and_directory() -> None:
     asyncio.run(scenario())
 
 
+def test_change_tree_reload_preserves_expanded_non_first_group() -> None:
+    async def scenario() -> None:
+        changes = (
+            make_change("first.py"),
+            make_change("second.py"),
+        )
+        backend = StubBackend(repo_root=Path("."), batches=[changes, changes])
+        app = DiffTreeViewApp(backend.list_changes(), backend=backend, live_watch=False)
+
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            tree = app.query_one(ChangeTree)
+
+            groups = [c for c in tree.root.children if c.data is not None and not c.data.is_spacer]
+            assert not groups[1].is_expanded
+            groups[1].expand()
+
+            tree.reload_changes(backend.list_changes())
+            await pilot.pause()
+
+            groups = [c for c in tree.root.children if c.data is not None and not c.data.is_spacer]
+            assert groups[1].is_expanded, "reload must not re-collapse a user-expanded change group"
+
+    asyncio.run(scenario())
+
+
 async def test_dff_app_schedules_watcher_when_backend_is_provided(tmp_path: Path) -> None:
     backend = StubBackend(repo_root=tmp_path, batches=[(make_change("demo.py"),)])
     app = DiffTreeViewApp(backend.list_changes(), backend=backend, live_watch=True)

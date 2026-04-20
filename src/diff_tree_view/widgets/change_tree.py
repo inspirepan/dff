@@ -247,6 +247,9 @@ class ChangeTree(Tree[NodeMeta]):
         label_style = self.get_component_rich_style("tree--label", partial=True)
         if self.hover_line == y:
             label_style += self.get_component_rich_style("tree--highlight", partial=True)
+        # Right-column style mirrors the label style minus the cursor background
+        # so the diff stats and status letter don't get tinted on the active row.
+        right_style = label_style
         if self.cursor_line == y:
             label_style += self.get_component_rich_style("tree--cursor", partial=False)
 
@@ -262,7 +265,7 @@ class ChangeTree(Tree[NodeMeta]):
         right_source = self._node_right(node)
         if right_source is not None and right_source.plain:
             right_text = right_source.copy()
-            right_text.stylize(label_style)
+            right_text.stylize(right_style)
             right_text.stylize(Style(meta={"node": node._id}))
 
         # `trailing` keeps the status letter two columns off the scrollbar
@@ -329,14 +332,16 @@ class ChangeTree(Tree[NodeMeta]):
                 spacer.allow_expand = False
             left, right = self._format_change_node(change)
             label = self._combine_label(left, right)
-            group_node = self.root.add(label, data=NodeMeta(left=left, right=right, change=change), expand=True)
+            # Only the first change group starts expanded; later ones are
+            # collapsed by default so long change lists stay scannable.
+            group_node = self.root.add(label, data=NodeMeta(left=left, right=right, change=change), expand=(index == 0))
             directory_root = self._build_directory_tree(change.files)
             self._add_directory_children(group_node, directory_root, change=change)
 
     def reload_changes(self, changes: Sequence[Change]) -> None:
         """Rebuild the tree from a fresh set of changes, preserving cursor path."""
         cursor_path = self._cursor_label_path()
-        collapsed_paths = self._collect_collapsed_paths()
+        expansion_states = self._collect_expansion_states()
         # Preserve the user's scroll position across rebuilds. `move_cursor`
         # below calls `scroll_to_node`, which would otherwise yank the view
         # back to the cursor whenever the watcher fires.
@@ -345,7 +350,7 @@ class ChangeTree(Tree[NodeMeta]):
         self.clear()
         self.root.expand()
         self._build_tree()
-        self._apply_collapsed_paths(collapsed_paths)
+        self._apply_expansion_states(expansion_states)
         self._build()
         if cursor_path:
             self._restore_cursor(cursor_path)
@@ -353,28 +358,34 @@ class ChangeTree(Tree[NodeMeta]):
             self.move_cursor(self.root.children[0])
         self.scroll_to(x=previous_scroll.x, y=previous_scroll.y, animate=False)
 
-    def _collect_collapsed_paths(self) -> set[tuple[str, ...]]:
-        collapsed: set[tuple[str, ...]] = set()
+    def _collect_expansion_states(self) -> dict[tuple[str, ...], bool]:
+        # Record every expandable node's state so reload_changes can restore
+        # user-made toggles in either direction (expand or collapse) against
+        # whatever the rebuild picks as defaults.
+        states: dict[tuple[str, ...], bool] = {}
 
         def walk(node: TreeNode[NodeMeta], path: tuple[str, ...]) -> None:
             for child in node.children:
                 child_path = (*path, self._node_identity(child))
-                if child.allow_expand and not child.is_expanded:
-                    collapsed.add(child_path)
+                if child.allow_expand:
+                    states[child_path] = child.is_expanded
                 walk(child, child_path)
 
         walk(self.root, ())
-        return collapsed
+        return states
 
-    def _apply_collapsed_paths(self, collapsed: set[tuple[str, ...]]) -> None:
-        if not collapsed:
+    def _apply_expansion_states(self, states: dict[tuple[str, ...], bool]) -> None:
+        if not states:
             return
 
         def walk(node: TreeNode[NodeMeta], path: tuple[str, ...]) -> None:
             for child in node.children:
                 child_path = (*path, self._node_identity(child))
-                if child_path in collapsed and child.allow_expand:
-                    child.collapse()
+                if child.allow_expand and child_path in states:
+                    if states[child_path]:
+                        child.expand()
+                    else:
+                        child.collapse()
                 walk(child, child_path)
 
         walk(self.root, ())

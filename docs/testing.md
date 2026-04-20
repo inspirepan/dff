@@ -121,6 +121,9 @@ uv run pytest -m smoke              # CI-only tmux smoke layer
 - [x] `j` / `k` navigate items, wrapping at ends or stopping (per config).
 - [x] `J` / `K` jump to next/prev change group.
 - [x] `Enter` / `Space` on a directory folds/unfolds it.
+- [x] By default only the first change group is expanded; the rest start
+      collapsed.
+- [x] User-toggled expansion of a non-first group survives a reload.
 - [x] Single-child directories auto-collapse when configured.
 - [x] Ignored files (glob) render dimmed.
 - [x] Conflict files render with `!` badge in red.

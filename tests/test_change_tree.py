@@ -183,6 +183,19 @@ async def test_change_tree_styles_all_file_status_badges() -> None:
         assert any(span.style == "#e8b040" for span in labels["renamed.py  (+4,-4)  R"].spans)
 
 
+async def test_change_tree_expands_only_first_change_group_by_default() -> None:
+    app = TreeApp(sample_changes())
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        tree = app.query_one(ChangeTree)
+
+        groups = [child for child in tree.root.children if child.data is not None and not child.data.is_spacer]
+        assert len(groups) == 2
+        assert groups[0].is_expanded, "first change group should start expanded"
+        assert not groups[1].is_expanded, "subsequent change groups should start collapsed"
+
+
 async def test_change_tree_j_k_navigation_and_space_toggle_directory() -> None:
     app = TreeApp(sample_changes())
 
