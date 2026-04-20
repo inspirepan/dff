@@ -92,6 +92,30 @@ def test_change_tree_reload_swaps_content_and_preserves_cursor_path() -> None:
     asyncio.run(scenario())
 
 
+def test_change_tree_reload_preserves_scroll_position() -> None:
+    async def scenario() -> None:
+        # Enough changes that the tree is taller than the viewport so scroll_y can
+        # move without the cursor leaving the visible region.
+        changes = tuple(make_change(f"file_{i:02d}.py") for i in range(40))
+        backend = StubBackend(repo_root=Path("."), batches=[changes, changes])
+        app = DiffTreeViewApp(backend.list_changes(), backend=backend, live_watch=False)
+
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            tree = app.query_one(ChangeTree)
+            # Leave cursor at the top, scroll the view down as the user would.
+            tree.scroll_to(y=10, animate=False)
+            await pilot.pause()
+            assert tree.scroll_offset.y == 10
+
+            tree.reload_changes(backend.list_changes())
+            await pilot.pause()
+
+            assert tree.scroll_offset.y == 10, "reload must not reset the user's scroll position"
+
+    asyncio.run(scenario())
+
+
 def test_change_tree_reload_preserves_collapsed_group_and_directory() -> None:
     async def scenario() -> None:
         change = Change(

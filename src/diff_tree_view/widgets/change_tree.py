@@ -337,6 +337,10 @@ class ChangeTree(Tree[NodeMeta]):
         """Rebuild the tree from a fresh set of changes, preserving cursor path."""
         cursor_path = self._cursor_label_path()
         collapsed_paths = self._collect_collapsed_paths()
+        # Preserve the user's scroll position across rebuilds. `move_cursor`
+        # below calls `scroll_to_node`, which would otherwise yank the view
+        # back to the cursor whenever the watcher fires.
+        previous_scroll = self.scroll_offset
         self._changes = tuple(changes)
         self.clear()
         self.root.expand()
@@ -347,6 +351,7 @@ class ChangeTree(Tree[NodeMeta]):
             self._restore_cursor(cursor_path)
         elif self.root.children:
             self.move_cursor(self.root.children[0])
+        self.scroll_to(x=previous_scroll.x, y=previous_scroll.y, animate=False)
 
     def _collect_collapsed_paths(self) -> set[tuple[str, ...]]:
         collapsed: set[tuple[str, ...]] = set()
