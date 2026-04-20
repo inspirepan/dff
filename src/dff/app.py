@@ -5,7 +5,7 @@ from typing import ClassVar
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, Vertical, VerticalScroll
 
 from dff.config import UISettings
 from dff.models import Change, FileChange, FileSides
@@ -24,6 +24,10 @@ class DffApp(App[None]):
         # `zw`/`zl` wrap muscle memory; `w` is the historical default.
         Binding("w", "toggle_wrap", "Wrap", show=False),
         Binding("z", "toggle_wrap", "Wrap", show=False),
+        Binding("d", "scroll_diff_down", "Scroll diff down", show=False),
+        Binding("u", "scroll_diff_up", "Scroll diff up", show=False),
+        Binding("f", "scroll_diff_page_down", "Scroll diff page down", show=False),
+        Binding("b", "scroll_diff_page_up", "Scroll diff page up", show=False),
     ]
 
     def __init__(
@@ -68,6 +72,28 @@ class DffApp(App[None]):
 
     def action_toggle_wrap(self) -> None:
         self.query_one(DiffPanel).toggle_wrap()
+
+    def _diff_body(self) -> VerticalScroll | None:
+        try:
+            return self.query_one("#diff-body", VerticalScroll)
+        except Exception:
+            return None
+
+    def action_scroll_diff_down(self) -> None:
+        if body := self._diff_body():
+            body.scroll_relative(y=body.size.height // 2)
+
+    def action_scroll_diff_up(self) -> None:
+        if body := self._diff_body():
+            body.scroll_relative(y=-(body.size.height // 2))
+
+    def action_scroll_diff_page_down(self) -> None:
+        if body := self._diff_body():
+            body.scroll_page_down()
+
+    def action_scroll_diff_page_up(self) -> None:
+        if body := self._diff_body():
+            body.scroll_page_up()
 
     def _refresh_changes(self) -> None:
         if self.backend is None:

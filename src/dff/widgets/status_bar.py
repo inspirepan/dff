@@ -44,6 +44,7 @@ class StatusBar(Static):
         if self._split_supported():
             hints.append(("m", key_style, " split", label_style))
         hints.append(("z", key_style, " wrap", label_style))
+        hints.append(("d/u", key_style, " diff scroll", label_style))
         hints.append(("q", key_style, " quit", label_style))
         text.append(" ")
         for index, (keys, key_style, label, label_style) in enumerate(hints):
