@@ -57,6 +57,8 @@ uv run pytest -m smoke              # CI-only tmux smoke layer
 - [ ] Each change exposes `change_id`, `short_id`, `description`,
       `author`, `timestamp`.
 - [x] `list_files(change_id)` parses `--summary` into `M/A/D/R` + stats.
+- [x] Rename summaries with mid-path braces (`src/{old => new}/file.py`)
+      parse cleanly into full before/after paths.
 - [x] `get_sides(change_id, path)` uses `jj file show -r <id>-` and
       `-r <id>` for before/after.
 - [ ] Root `change_id` = `zzzzzzzz` is handled (no parent).

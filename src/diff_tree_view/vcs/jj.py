@@ -65,8 +65,16 @@ class JjBackend:
     def _parse_summary_path(self, status: str, raw_path: str) -> tuple[str, str | None]:
         if status != "R":
             return raw_path, None
-        before, after = raw_path.removeprefix("{").removesuffix("}").split(" => ", maxsplit=1)
-        return after, before
+        # jj's `diff --summary` compacts renames by wrapping only the differing
+        # segment in braces, e.g. `src/{dff => diff_tree_view}/cli.py` or
+        # the whole-path form `{a.txt => b.txt}`. Substitute each side of the
+        # brace span back into the original to recover full before/after paths.
+        start = raw_path.index("{")
+        end = raw_path.index("}", start)
+        before_side, after_side = raw_path[start + 1 : end].split(" => ", maxsplit=1)
+        prefix = raw_path[:start]
+        suffix = raw_path[end + 1 :]
+        return prefix + after_side + suffix, prefix + before_side + suffix
 
     def _parse_patch_stats(self, output: str) -> dict[str, HunkStats]:
         stats: dict[str, HunkStats] = {}

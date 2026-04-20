@@ -94,3 +94,27 @@ def test_jj_backend_get_sides_flags_binary(tmp_path: Path) -> None:
 
     sides = backend.get_sides(feature, blob)
     assert sides == FileSides(before="", after="", binary=True)
+
+
+def test_jj_backend_parses_rename_summary_formats(tmp_path: Path) -> None:
+    backend = JjBackend(tmp_path)
+
+    # Whole-path rename: `{old => new}`
+    path, old = backend._parse_summary_path("R", "{a.txt => b.txt}")
+    assert path == "b.txt"
+    assert old == "a.txt"
+
+    # Mid-path rename: `prefix/{old => new}/suffix`
+    path, old = backend._parse_summary_path("R", "src/{dff => diff_tree_view}/cli.py")
+    assert path == "src/diff_tree_view/cli.py"
+    assert old == "src/dff/cli.py"
+
+    # Rename at path head: `{old => new}/suffix`
+    path, old = backend._parse_summary_path("R", "{old => new}/cli.py")
+    assert path == "new/cli.py"
+    assert old == "old/cli.py"
+
+    # Rename at path tail: `prefix/{old => new}`
+    path, old = backend._parse_summary_path("R", "src/{old => new}")
+    assert path == "src/new"
+    assert old == "src/old"
