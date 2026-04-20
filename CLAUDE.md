@@ -200,31 +200,40 @@ Auth: the user exports `UV_PUBLISH_TOKEN` in their shell (a PyPI API
 token). `uv publish` picks it up automatically — do not pass `--token`
 on the command line, and never write the token to a file.
 
-Release flow (from a clean worktree, on the release commit):
+Release flow (from a clean worktree, `main` checked out, green CI):
 
 ```bash
-# 1. bump version in pyproject.toml, commit it
-# 2. build fresh artifacts
+# 1. bump version in pyproject.toml (semver: X.Y.Z), also run `uv sync`
+#    so uv.lock records the new version, then commit both files:
+#        chore(release): v0.1.2
+# 2. build fresh artifacts (never reuse a stale dist/)
 trash dist 2>/dev/null; uv build
 # 3. sanity-check metadata (catches README / long-description issues)
 uv run --with twine twine check dist/*
 # 4. publish to PyPI
 uv publish dist/*
-# 5. verify
+# 5. verify the upload landed
 curl -sS https://pypi.org/pypi/diff-tree-view/json | jq '.info.version'
+# 6. tag the release commit and push the tag
+git tag -a vX.Y.Z -m "vX.Y.Z"
+git push origin vX.Y.Z
 ```
 
 Hard rules:
 
+- **Version bump and tag are mandatory for every release**, in this
+  order: bump -> commit -> build -> publish -> tag. The tag name is
+  `v<version>` and must match `pyproject.toml` exactly.
 - **A `name+version` on PyPI is immutable.** You cannot re-upload or
   overwrite. If a release is broken, bump the version and publish again
   — never try to "fix" an existing release.
+- **Tag only after `uv publish` succeeds.** A tag without a
+  corresponding PyPI release is worse than no tag. If publish fails
+  partway, fix the cause, bump the version again, and tag the new one.
 - **Always build from a clean `dist/`.** Stale wheels from a previous
   version will get uploaded alongside the new one.
 - **Do not use TestPyPI tokens against PyPI or vice versa.** They are
   different accounts; a misrouted `uv publish` will 403.
-- Tag the release in git (`git tag vX.Y.Z && git push --tags`) *after*
-  `uv publish` succeeds, so the tag only exists for published versions.
 
 ---
 
