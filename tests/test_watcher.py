@@ -89,6 +89,44 @@ def test_change_tree_reload_swaps_content_and_preserves_cursor_path() -> None:
     asyncio.run(scenario())
 
 
+def test_change_tree_reload_preserves_collapsed_group_and_directory() -> None:
+    async def scenario() -> None:
+        change = Change(
+            change_id="c",
+            short_id="c",
+            description="demo",
+            files=(
+                FileChange("src/a.py", "M", HunkStats(1, 0)),
+                FileChange("src/b.py", "M", HunkStats(2, 0)),
+            ),
+        )
+        backend = StubBackend(repo_root=Path("."), batches=[(change,), (change,)])
+        app = DffApp(backend.list_changes(), backend=backend, live_watch=False)
+
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            tree = app.query_one(ChangeTree)
+
+            group = tree.root.children[0]
+            src_dir = group.children[0]
+            assert src_dir.is_expanded
+            src_dir.collapse()
+            group.collapse()
+            assert not src_dir.is_expanded
+            assert not group.is_expanded
+
+            tree.reload_changes(backend.list_changes())
+            await pilot.pause()
+
+            group = tree.root.children[0]
+            assert not group.is_expanded, "reload must not re-expand a collapsed change group"
+            group.expand()
+            src_dir = group.children[0]
+            assert not src_dir.is_expanded, "reload must not re-expand a collapsed directory"
+
+    asyncio.run(scenario())
+
+
 async def test_dff_app_schedules_watcher_when_backend_is_provided(tmp_path: Path) -> None:
     backend = StubBackend(repo_root=tmp_path, batches=[(make_change("demo.py"),)])
     app = DffApp(backend.list_changes(), backend=backend, live_watch=True)

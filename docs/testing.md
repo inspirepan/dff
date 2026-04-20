@@ -217,7 +217,7 @@ uv run pytest -m smoke              # CI-only tmux smoke layer
 - [ ] `.jj/` snapshot write refreshes the tree.
 - [ ] `.gitignore` / `.jjignore` / `extra_ignore_globs` paths do NOT
       trigger reloads.
-- [ ] Scroll position and expanded folds survive a reload when possible.
+- [x] Scroll position and expanded folds survive a reload when possible.
 - [x] Manual `r` forces a reload.
 - [x] `live_watch=False` disables the watcher cleanly.
 

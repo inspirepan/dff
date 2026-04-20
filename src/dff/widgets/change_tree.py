@@ -252,15 +252,43 @@ class ChangeTree(Tree[NodeMeta]):
     def reload_changes(self, changes: Sequence[Change]) -> None:
         """Rebuild the tree from a fresh set of changes, preserving cursor path."""
         cursor_path = self._cursor_label_path()
+        collapsed_paths = self._collect_collapsed_paths()
         self._changes = tuple(changes)
         self.clear()
         self.root.expand()
         self._build_tree()
+        self._apply_collapsed_paths(collapsed_paths)
         self._build()
         if cursor_path:
             self._restore_cursor(cursor_path)
         elif self.root.children:
             self.move_cursor(self.root.children[0])
+
+    def _collect_collapsed_paths(self) -> set[tuple[str, ...]]:
+        collapsed: set[tuple[str, ...]] = set()
+
+        def walk(node: TreeNode[NodeMeta], path: tuple[str, ...]) -> None:
+            for child in node.children:
+                child_path = (*path, self._node_identity(child))
+                if child.allow_expand and not child.is_expanded:
+                    collapsed.add(child_path)
+                walk(child, child_path)
+
+        walk(self.root, ())
+        return collapsed
+
+    def _apply_collapsed_paths(self, collapsed: set[tuple[str, ...]]) -> None:
+        if not collapsed:
+            return
+
+        def walk(node: TreeNode[NodeMeta], path: tuple[str, ...]) -> None:
+            for child in node.children:
+                child_path = (*path, self._node_identity(child))
+                if child_path in collapsed and child.allow_expand:
+                    child.collapse()
+                walk(child, child_path)
+
+        walk(self.root, ())
 
     def _cursor_label_path(self) -> list[str]:
         node = self.cursor_node
