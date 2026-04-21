@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import contextlib
 from pathlib import Path
 
 from textual_diff_view import DiffView
@@ -171,6 +173,62 @@ async def test_diff_panel_toggle_split_flips_diff_view_reactive(tmp_path: Path) 
         await pilot.pause()
         views_after = list(panel.query(DiffView))
         assert views_after[0].split is not initial_split
+
+
+async def test_diff_panel_cancellation_does_not_leave_body_empty(tmp_path: Path, monkeypatch) -> None:
+    sides = {
+        "src/a.py": FileSides(before="old\n", after="new\n"),
+        "src/b.bin": FileSides(before="", after="", binary=True),
+    }
+    backend = StubBackend(tmp_path, sides)
+    app = DiffTreeViewApp(backend.list_changes(), backend=backend, live_watch=False)
+
+    async with app.run_test(size=(180, 40)) as pilot:
+        await pilot.pause()
+        tree = app.query_one(ChangeTree)
+        panel = app.query_one(DiffPanel)
+
+        for _ in range(6):
+            await pilot.press("j")
+            await pilot.pause()
+            node = tree.cursor_node
+            if node is not None and node.data is not None and node.data.file is not None:
+                if node.data.file.path == "src/a.py":
+                    break
+        await pilot.pause()
+
+        # Baseline: first diff is mounted.
+        assert list(panel.query(DiffView))
+        assert panel._body is not None
+        body = panel._body
+        assert body.children
+
+        original_mount = body.mount
+        gate = asyncio.Event()
+
+        async def delayed_mount(*widgets, **kwargs):
+            await gate.wait()
+            return await original_mount(*widgets, **kwargs)
+
+        monkeypatch.setattr(body, "mount", delayed_mount)
+
+        task = asyncio.create_task(
+            panel.show_file(
+                backend._change,
+                FileChange("src/other.py", "M", HunkStats(1, 1)),
+                FileSides(before="a\n", after="b\n"),
+            )
+        )
+        await pilot.pause()
+
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+        # Even if an in-flight load gets cancelled, body should keep previous
+        # content instead of ending up empty.
+        assert body.children
+        assert list(panel.query(DiffView))
 
 
 def _long_file_with_two_hunks(length: int = 60) -> tuple[str, str]:

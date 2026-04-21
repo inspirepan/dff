@@ -154,6 +154,8 @@ uv run pytest -m smoke              # CI-only tmux smoke layer
 - [x] Syntax theme renders function names without an underline.
 - [ ] Large file (> `performance.max_file_lines`) falls back to plain
       text with a notice pill.
+- [x] Cancelling an in-flight diff load (rapid cursor/file switches) does
+      not leave the diff body empty.
 - [x] DiffPanel and nested DiffView / .diff-group / VerticalScroll
       render with transparent backgrounds under `-transparent` mode.
 - [x] Diff panel is wrapped in a rounded `round`-border panel frame

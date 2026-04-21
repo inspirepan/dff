@@ -809,30 +809,34 @@ class DiffPanel(Vertical):
         assert self._body is not None
         key = (change.change_id, file.path)
         self._header.set_text(self._format_header(change, file))
-        await self._body.remove_children()
         if sides.binary:
-            await self._body.mount(Static("[binary file — not shown]", classes="diff-placeholder"))
+            widget = Static("[binary file — not shown]", classes="diff-placeholder")
         else:
-            await self._body.mount(
-                TransparentDiffView(
-                    path_original=file.old_path or file.path,
-                    path_modified=file.path,
-                    code_original=sides.before,
-                    code_modified=sides.after,
-                    split=self._effective_split,
-                    wrap=self._wrap,
-                    theme=self._ui.resolved_tree_theme,
-                )
+            widget = TransparentDiffView(
+                path_original=file.old_path or file.path,
+                path_modified=file.path,
+                code_original=sides.before,
+                code_modified=sides.after,
+                split=self._effective_split,
+                wrap=self._wrap,
+                theme=self._ui.resolved_tree_theme,
             )
+        await self._replace_body_content(widget)
         self._current_key = key
 
     async def clear_file(self) -> None:
         assert self._header is not None
         assert self._body is not None
         self._header.set_text(Text())
-        await self._body.remove_children()
-        await self._body.mount(Static("Select a file to view its diff", classes="diff-placeholder diff-empty"))
+        await self._replace_body_content(Static("Select a file to view its diff", classes="diff-placeholder diff-empty"))
         self._current_key = None
+
+    async def _replace_body_content(self, widget: Static | TransparentDiffView) -> None:
+        assert self._body is not None
+        old_children = list(self._body.children)
+        await self._body.mount(widget)
+        for child in old_children:
+            await child.remove()
 
     def toggle_split(self) -> None:
         self._user_split = not self._user_split
