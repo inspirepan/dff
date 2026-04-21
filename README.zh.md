@@ -204,7 +204,7 @@ TOML，加载顺序如下（后者覆盖前者）：
 - **`[ui]`** — 主题、默认 diff 模式、自动换行、行号、语法高亮开/关、透明背景开/关、响应式断点。
 - **`[fold]`** — 启用、上下文行、"如果较小则始终展开"阈值。
 - **`[tree]`** — 按变更或目录分组、显示统计、折叠单子目录、忽略 glob。
-- **`[vcs.jj]`** — 默认 revset、`--ignore-working-copy`、`@` 是否作为自己的行。
+- **`[vcs.jj]`** — 默认 revset、`@` 是否作为自己的行。
 - **`[vcs.git]`** — 显示已暂存/未暂存、是否合并为一个"Working"分组。
 - **`[performance]`** — 降级到纯文本前的最大文件行数、每个变更的最大文件数、并行子进程数。
 - **`[vcs.watch]`** — 启用、防抖间隔 (ms)、额外忽略 glob、是否监听 `.git/` 和 `.jj/` 内部状态。
@@ -327,9 +327,9 @@ src/diff_tree_view/
 **jj**
 
 - revset 中的变更：
-  `jj log -r '<revset>' --no-graph --ignore-working-copy -T '<template>'`
+  `jj log -r '<revset>' --no-graph -T '<template>'`
 - 变更中的文件及状态：
-  `jj diff -r <id> --summary --ignore-working-copy`
+  `jj diff -r <id> --summary`
 - 文件内容（前/后）：
   `jj file show -r <id>- <path>` / `jj file show -r <id> <path>`
 

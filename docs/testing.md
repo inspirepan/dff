@@ -53,7 +53,8 @@ uv run pytest -m smoke              # CI-only tmux smoke layer
 - [x] `list_changes()` uses the configured revset (default `trunk()..@`).
 - [ ] Revset fallback to `@-::@` when `trunk()` is unconfigured.
 - [ ] `--rev` CLI flag overrides config.
-- [x] All commands pass `--ignore-working-copy`.
+- [x] `list_changes()` includes unsnapshotted working-copy edits so the
+      watcher can refresh tree stats after file saves.
 - [ ] Each change exposes `change_id`, `short_id`, `description`,
       `author`, `timestamp`.
 - [x] `list_files(change_id)` parses `--summary` into `M/A/D/R` + stats.

@@ -58,6 +58,21 @@ def test_jj_backend_defaults_to_current_revset(tmp_path: Path) -> None:
     assert changes[0].files
 
 
+def test_jj_backend_list_changes_includes_unsnapshotted_working_copy_edits(tmp_path: Path) -> None:
+    root = jj_repo_with_feature_change(tmp_path)
+    backend = JjBackend(root)
+
+    # Edit a tracked file without running any jj command in between.
+    # `list_changes()` should snapshot/read current working-copy content so
+    # watcher-driven refreshes reflect the latest file stats.
+    (root / "base.txt").write_text("base\nfeature\nlive\n")
+
+    changes = backend.list_changes(rev="@")
+    files = {file_change.path: file_change for file_change in changes[0].files}
+
+    assert files["base.txt"].stats == HunkStats(2, 0)
+
+
 def test_jj_backend_get_sides_returns_parent_and_current(tmp_path: Path) -> None:
     root = jj_repo_with_feature_change(tmp_path)
     backend = JjBackend(root)

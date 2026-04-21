@@ -277,7 +277,7 @@ Configurable areas:
 - **`[fold]`** — enabled, context lines, "always expand if small" threshold.
 - **`[tree]`** — group by change vs directory, show stats, collapse single-
   child dirs, ignore globs.
-- **`[vcs.jj]`** — default revset, `--ignore-working-copy`, whether `@` is
+- **`[vcs.jj]`** — default revset, whether `@` is
   split out as its own row.
 - **`[vcs.git]`** — show staged / unstaged, whether to merge them into one
   "Working" group.
@@ -426,9 +426,9 @@ automatically via `terminal.detect_tree_theme_name()` (OSC-11 query).
 **jj**
 
 - Changes in revset:
-  `jj log -r '<revset>' --no-graph --ignore-working-copy -T '<template>'`
+  `jj log -r '<revset>' --no-graph -T '<template>'`
 - Files in a change with status:
-  `jj diff -r <id> --summary --ignore-working-copy`
+  `jj diff -r <id> --summary`
 - File content (before / after):
   `jj file show -r <id>- <path>` / `jj file show -r <id> <path>`
 

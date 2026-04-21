@@ -125,7 +125,7 @@ class JjBackend:
     def _run(self, *args: str) -> str:
         try:
             completed = subprocess.run(
-                ["jj", "-R", str(self.repo_root), "--quiet", "--ignore-working-copy", *args],
+                ["jj", "-R", str(self.repo_root), "--quiet", *args],
                 cwd=self.repo_root,
                 check=True,
                 capture_output=True,
@@ -140,7 +140,7 @@ class JjBackend:
     def _run_bytes(self, *args: str) -> bytes:
         try:
             completed = subprocess.run(
-                ["jj", "-R", str(self.repo_root), "--quiet", "--ignore-working-copy", *args],
+                ["jj", "-R", str(self.repo_root), "--quiet", *args],
                 cwd=self.repo_root,
                 check=True,
                 capture_output=True,
