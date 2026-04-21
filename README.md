@@ -2,10 +2,21 @@
 
 A terminal UI diff viewer for **jujutsu** and **git**, inspired by the VCS panel
 in VS Code. Run `dff` inside a repo and get an interactive, keyboard-driven
-review experience — tree on the left, rich diff on the right, inline comments
-at the bottom that can be copied out as a prompt for Claude.
+review experience — tree on the left, rich diff on the right. Inline comment
+workflow and copy-as-prompt are **[ ] TODO** and not shipped yet.
 
 Status: **planning / pre-alpha**. This README doubles as the roadmap.
+
+## Implementation Snapshot (2026-04-21)
+
+- [x] VCS backends: `jj` / `git` detect + list changes + load file sides.
+- [x] Tree + diff core UI: grouped change tree, stats, split/unified toggle, wrap toggle.
+- [x] Auto-refresh watcher + manual `r` reload.
+- [x] Transparent theme + terminal light/dark auto-detect.
+- [ ] TODO: full responsive layout (`>=140` / `100-139` / `<100` with tab switch).
+- [ ] TODO: review workflow (line selection, comment bar, copy-as-prompt).
+- [ ] TODO: config loading chain (TOML/env/flags) and key rebinds.
+- [ ] TODO: help overlay (`?`), open-in-editor (`e`), conflict-focused review UI.
 
 ---
 
@@ -144,14 +155,15 @@ commands in another terminal.
   currently selected file changed, re-render its diff in-place. Scroll
   position and the set of expanded fold regions are preserved across
   refreshes where possible.
-- Comments are **not** cleared on refresh. Line numbers in stored comments
-  are re-anchored via the new hunk map; if a commented range no longer
-  exists after the refresh, it's marked `stale` (dimmed, still copyable).
+- **[ ] TODO**: preserve and re-anchor review comments across refreshes. The
+  current build has no in-session comment store yet.
 - Manual `r` still works for forcing a reload.
 - Disable with `[vcs] watch = false`, or tune with `[vcs.watch] debounce_ms`
   and `[vcs.watch] extra_ignore_globs`.
 
 ### Responsive layout
+
+Status: **[ ] TODO** (planned behavior below; current app only auto-forces unified mode when diff panel width is too narrow for split).
 
 Like a responsive web page, `dff` reflows based on terminal width:
 
@@ -164,6 +176,8 @@ Like a responsive web page, `dff` reflows based on terminal width:
 Breakpoints are configurable.
 
 ### Line selection & commenting
+
+Status: **[ ] TODO** (spec below is target behavior; not shipped in the current build).
 
 PR-review workflow without leaving the terminal.
 
@@ -246,6 +260,8 @@ overridable via `comment.templates.custom.path` (Jinja).
 
 ### Configuration
 
+Status: **[ ] TODO** (design target below; currently only in-code `UISettings` defaults are wired).
+
 TOML, loaded in this order (later overrides earlier):
 
 1. Built-in defaults
@@ -278,27 +294,32 @@ Configurable areas:
 
 A fully-commented `config.example.toml` ships with the project.
 
-### Keybindings (defaults)
+### Keybindings
 
-| Key       | Action                                |
-|-----------|---------------------------------------|
-| `j` / `k` | Next / previous item in tree          |
-| `J` / `K` | Next / previous change group          |
-| `Enter`   | Expand tree node / fold region        |
-| `Space`   | Toggle line selection (diff)          |
-| `[` / `]` | Force comment side to LEFT / RIGHT (context lines) |
-| `h` / `l` | Switch focused column (split mode)    |
-| `c`       | Start a comment on current selection  |
-| `g c`     | Focus the comment list                |
-| `Esc`     | Cancel comment input / clear selection|
-| `y`       | Copy all comments as prompt           |
-| `m`       | Toggle split / unified                |
-| `Tab`     | (narrow) switch tree ↔ diff panel     |
-| `r`       | Force refresh (normally automatic)    |
-| `w`       | Toggle word wrap                      |
-| `e`       | Open current file in `$EDITOR`        |
-| `?`       | Help overlay                          |
-| `q`       | Quit                                  |
+`[ ]` rows are TODO / planned, not currently implemented.
+
+| Status | Key       | Action                                |
+|--------|-----------|---------------------------------------|
+| [x]    | `j` / `k` | Next / previous item in tree          |
+| [x]    | `J` / `K` | Next / previous change group          |
+| [x]    | `Enter`   | Expand/collapse tree node             |
+| [ ]    | `Enter`   | Expand fold marker in diff            |
+| [ ]    | `Space`   | Toggle line selection (diff)          |
+| [ ]    | `[` / `]` | Force comment side to LEFT / RIGHT    |
+| [ ]    | `h` / `l` | Switch focused column (split mode)    |
+| [ ]    | `c`       | Start a comment on current selection  |
+| [ ]    | `g c`     | Focus the comment list                |
+| [ ]    | `Esc`     | Cancel comment input / clear selection|
+| [ ]    | `y`       | Copy all comments as prompt           |
+| [x]    | `m`       | Toggle split / unified                |
+| [ ]    | `Tab`     | (narrow) switch tree ↔ diff panel     |
+| [x]    | `r`       | Force refresh (normally automatic)    |
+| [x]    | `w` / `z` | Toggle word wrap                      |
+| [x]    | `d` / `u` | Scroll diff half-page down / up       |
+| [x]    | `f` / `b` | Scroll diff page down / up            |
+| [ ]    | `e`       | Open current file in `$EDITOR`        |
+| [ ]    | `?`       | Help overlay                          |
+| [x]    | `q`       | Quit                                  |
 
 ---
 
@@ -323,14 +344,12 @@ comment export flow).
 
 ```bash
 dff                          # auto-detect jj or git, show default revset
-dff --rev 'trunk()..@'       # explicit jj revset
+dff --backend jj --rev '@'   # explicit jj backend + revset
 dff --backend git            # force git
-dff --rev HEAD~3..HEAD       # git rev range
-dff --staged                 # git staged only
-dff --mode unified           # override default diff mode
+dff --version
 ```
 
-Inside the TUI, press `?` for the full keymap.
+`--mode`, `--staged`, and help overlay (`?`) are **[ ] TODO** and not available yet.
 
 ---
 

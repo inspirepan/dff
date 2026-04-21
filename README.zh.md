@@ -1,8 +1,19 @@
 # diff-tree-view
 
-一个为 **jujutsu** 和 **git** 设计的终端 UI diff 查看器，灵感来自 VS Code 中的 VCS 面板。在仓库目录下运行 `dff`，即可获得交互式、键盘驱动的代码审查体验 — 左侧文件树，右侧富文本 diff，底部内联注释，可复制为 Claude 的 prompt。
+一个为 **jujutsu** 和 **git** 设计的终端 UI diff 查看器，灵感来自 VS Code 中的 VCS 面板。在仓库目录下运行 `dff`，即可获得交互式、键盘驱动的代码审查体验 — 左侧文件树，右侧富文本 diff。底部评论流与复制为 prompt 目前是 **[ ] TODO**，尚未发布。
 
 状态：**规划阶段 / 预发布**。本 README 同时作为路线图。
+
+## 实现快照（2026-04-21）
+
+- [x] VCS 后端：`jj` / `git` 自动检测、列变更、按文件读取 before/after。
+- [x] 核心界面：分组变更树、统计、split/unified 切换、换行切换。
+- [x] 自动刷新 watcher + 手动 `r` 刷新。
+- [x] 透明主题 + 终端明暗自动探测。
+- [ ] TODO：完整响应式布局（`>=140` / `100-139` / `<100` + Tab 切换）。
+- [ ] TODO：审查工作流（行选择、评论栏、复制为 prompt）。
+- [ ] TODO：配置加载链（TOML/env/flags）和按键重绑定。
+- [ ] TODO：帮助浮层（`?`）、编辑器跳转（`e`）、冲突专用视图。
 
 ---
 
@@ -96,11 +107,13 @@
   - **`.jj/`** 内部状态 — 捕获 `jj squash`、`jj new`、`jj abandon`、工作副本快照变更。
 - 事件被**防抖**（默认 150 ms），这样一连串写入仅触发一次重新加载。
 - 事件时：重新运行后端的 `list_changes()` + 刷新统计；如果当前选中文件改变，就地重新渲染其 diff。滚动位置和展开折叠区域集合在刷新时尽可能保留。
-- 注释在刷新时**不会**清除。已存储注释中的行号通过新的 hunk map 重锚定；如果注释范围在刷新后不再存在，标记为 `stale`（变淡，仍可复制）。
+- **[ ] TODO**：在刷新后保留并重锚定评论。当前版本尚无会话内评论存储。
 - 手动 `r` 仍可强制重新加载。
 - 通过 `[vcs] watch = false` 禁用，或通过 `[vcs.watch] debounce_ms` 和 `[vcs.watch] extra_ignore_globs` 调优。
 
 ### 响应式布局
+
+状态：**[ ] TODO**（下方是目标行为；当前仅在 diff 面板过窄时自动强制 unified，而不是完整断点重排）。
 
 如同响应式网页，`dff` 根据终端宽度自动重排：
 
@@ -113,6 +126,8 @@
 断点可配置。
 
 ### 行选择与评论
+
+状态：**[ ] TODO**（下方是设计目标，当前版本尚未发布该流程）。
 
 PR 审查工作流，不离开终端。
 
@@ -174,6 +189,8 @@ side 如何确定：
 
 ### 配置
 
+状态：**[ ] TODO**（下方是目标配置设计；当前仅接入代码内 `UISettings` 默认值）。
+
 TOML，加载顺序如下（后者覆盖前者）：
 
 1. 内置默认值
@@ -197,27 +214,32 @@ TOML，加载顺序如下（后者覆盖前者）：
 
 项目随附完整注释的 `config.example.toml`。
 
-### 按键绑定（默认）
+### 按键绑定
 
-| 按键      | 动作                                |
-|-----------|---------------------------------------|
-| `j` / `k` | 树中下一个/上一个项目                 |
-| `J` / `K` | 下一个/上一个变更分组                 |
-| `Enter`   | 展开树节点 / 折叠区域                |
-| `Space`   | 切换行选择（diff）                   |
-| `[` / `]` | 强制注释 side 为 LEFT / RIGHT（上下文行） |
-| `h` / `l` | 切换聚焦列（分列模式）               |
-| `c`       | 在当前选择上开始评论                  |
-| `g c`     | 聚焦注释列表                         |
-| `Esc`     | 取消评论输入 / 清除选择              |
-| `y`       | 复制所有注释为 prompt                 |
-| `m`       | 切换分列 / 统一                      |
-| `Tab`     | （窄屏）切换树 ↔ diff 面板           |
-| `r`       | 强制刷新（通常自动）                  |
-| `w`       | 切换自动换行                         |
-| `e`       | 在 `$EDITOR` 中打开当前文件          |
-| `?`       | 帮助浮层                             |
-| `q`       | 退出                                 |
+标记为 `[ ]` 的项表示 TODO / 计划中，当前尚未实现。
+
+| 状态 | 按键      | 动作                                |
+|------|-----------|-------------------------------------|
+| [x]  | `j` / `k` | 树中下一个/上一个项目               |
+| [x]  | `J` / `K` | 下一个/上一个变更分组               |
+| [x]  | `Enter`   | 展开/折叠树节点                     |
+| [ ]  | `Enter`   | 展开 diff 折叠标记                  |
+| [ ]  | `Space`   | 切换行选择（diff）                  |
+| [ ]  | `[` / `]` | 强制注释 side 为 LEFT / RIGHT       |
+| [ ]  | `h` / `l` | 切换聚焦列（split 模式）            |
+| [ ]  | `c`       | 在当前选择上开始评论                |
+| [ ]  | `g c`     | 聚焦注释列表                        |
+| [ ]  | `Esc`     | 取消评论输入 / 清除选择             |
+| [ ]  | `y`       | 复制所有注释为 prompt               |
+| [x]  | `m`       | 切换 split / unified                |
+| [ ]  | `Tab`     | （窄屏）切换树 ↔ diff 面板          |
+| [x]  | `r`       | 强制刷新（通常自动）                |
+| [x]  | `w` / `z` | 切换自动换行                        |
+| [x]  | `d` / `u` | diff 半页下滚 / 上滚                |
+| [x]  | `f` / `b` | diff 整页下滚 / 上滚                |
+| [ ]  | `e`       | 在 `$EDITOR` 中打开当前文件         |
+| [ ]  | `?`       | 帮助浮层                            |
+| [x]  | `q`       | 退出                                |
 
 ---
 
@@ -232,7 +254,8 @@ uv sync
 uv run dff
 ```
 
-运行时依赖：`textual`、`textual-diff-view`、`watchfiles`、`pyperclip`。
+运行时依赖：`textual`、`textual-diff-view`、`watchfiles`、`typer`。
+`pyperclip` 已声明但当前尚未接线（预留给后续评论导出流程）。
 
 ---
 
@@ -240,14 +263,12 @@ uv run dff
 
 ```bash
 dff                          # auto-detect jj or git, show default revset
-dff --rev 'trunk()..@'       # explicit jj revset
+dff --backend jj --rev '@'   # 显式指定 jj + revset
 dff --backend git            # force git
-dff --rev HEAD~3..HEAD       # git rev range
-dff --staged                 # git staged only
-dff --mode unified           # override default diff mode
+dff --version
 ```
 
-在 TUI 中，按 `?` 查看完整按键映射。
+`--mode`、`--staged` 和帮助浮层（`?`）目前是 **[ ] TODO**，尚未可用。
 
 ---
 
@@ -255,51 +276,51 @@ dff --mode unified           # override default diff mode
 
 ```
 src/diff_tree_view/
-  cli.py                       CLI entry; arg parsing; backend detect
-  app.py                       Textual App; composes tree/diff/comment bar
-  layout.py                    Responsive breakpoint logic
-  config.py                    TOML loader + dataclasses
+  cli.py                       Typer CLI；--backend / --rev / --version
+  app.py                       Textual App；组合 tree + diff + status bar
+  config.py                    UISettings dataclass（TOML loader 计划中）
+  theme.py                     TreeThemeTokens + 内置 DARK / LIGHT 调色板
+  terminal.py                  OSC-11 背景探测 → 自动 dark / light
 
   vcs/
-    base.py                    Protocol: Backend / Change / FileChange
-    detect.py                  Picks jj vs git
+    base.py                    Protocol: Backend, BackendError
+    detect.py                  选择 jj 或 git；向上查找 repo root
     jj.py                      subprocess: jj log / diff --summary / file show
     git.py                     subprocess: git diff --name-status / show
-    watcher.py                 watchfiles-based async watcher; debounced
-                               events fed to App.refresh_from_vcs()
+    watcher.py                 基于 watchfiles 的 async iterator；
+                               防抖事件驱动 App._refresh_changes()
 
   widgets/
-    change_tree.py             Tree widget with VS Code-style grouping
-    diff_panel.py              Wraps CollapsibleDiffView + header
-    collapsible_diff.py        Extends DiffView with fold/expand
-    line_selection.py          Mouse + keyboard line selection
-    comment_bar.py             Bottom input + comment list + copy
-    status_bar.py
+    change_tree.py             VS Code 风格分组树
+    diff_panel.py              Header + TransparentDiffView（textual-diff-view
+                               子类，去掉 split 缺失侧斜线填充，并从
+                               TreeThemeTokens 拉取颜色）
+    status_bar.py              单行提示栏（• 分隔）
 
   app.tcss                     Global stylesheet. Rules:
-                               * {border: none} everywhere; transparent
-                               backgrounds on Screen + containers;
-                               `.pill` / `.pill.-accent` / `.pill.-dim`
-                               for reverse-color labels; `$surface` only
-                               on overlays (help, confirms, popups).
+                               * { scrollbar-background: ansi_default } 让终端
+                               背景透过滚动条轨道；App.-transparent /
+                               App.-opaque 切换 Screen + panel 背景；树的
+                               cursor/guide/highlight 类统一压平为
+                               `transparent` + `text-style: none`。
 
   models/
-    change.py                  Change, FileChange, HunkStats
-    comment.py                 Comment(file, side, line_range, body,
-                               content_hash), CommentStore + re-anchor
-
-  prompt.py                    CommentStore -> markdown prompt
+    change.py                  Change, FileChange, FileSides, HunkStats
 ```
+
+计划中但尚未实现：`layout.py`（响应式断点）、
+`widgets/collapsible_diff.py`、`widgets/line_selection.py`、
+`widgets/comment_bar.py`、`models/comment.py`、`prompt.py`。
 
 ### 透明背景 — 工作原理
 
 三个部分组合：
 
-1. **主题** — `app.py` 中的 `App.theme = "textual-ansi"`。ANSI 主题将调色板决策保持在终端侧，而不是强制浅/深表面。
-2. **全局 TCSS** — 在 `app.tcss` 中，`Screen` 和所有布局容器（`#tree-panel`、`#diff-panel`、`#comment-bar`、`#status-bar` 等）都声明为 `background: transparent`。内部富文本小部件（`MarkdownFence`、表格、滚动条轨道）也是透明的，这样它们不会重绘自己的背景。
-3. **浮层保持不透明** — 帮助、注释列表弹窗、确认对话框使用 `background: $surface`，这样读起来像真正的浮动面板。
+1. **主题** — `app.py` 中 `App.theme = "textual-ansi"`。ANSI 主题把调色板决策留在终端侧，而不是强制浅/深背景面。
+2. **全局 TCSS** — `app.tcss` 通过 `UISettings.transparent_background` 在 `App.-transparent` 与 `App.-opaque` 间切换。透明模式下，`Screen`、`#app-shell`、`#panes`、`#diff-body`、`ChangeTree`、`DiffPanel`、`DiffHeader`、`#status-bar` 都设为 `background: transparent`；diff 面显式使用 `ansi_default`，避免 `rgba(0,0,0,0)` 被扁平化成纯黑。滚动条轨道同样使用 `scrollbar-background: ansi_default`。
+3. **树光标与导向线** — `.tree--cursor`、`.tree--guides-*` 以及 hover/highlight 类全部压平为 `background: transparent` + `text-style: none`，避免 Textual 默认 hover/selection 矩形覆盖终端壁纸。
 
-`DiffView` 的 `.diff-group` 有一个微妙的 `$foreground 4%` 着色，**通过透明度保留** — 它在终端背景上显示为细微的色彩，这正是我们想要的。已添加/删除行保持其 `$success 10% / $error 10%` 覆盖，设计如此。
+`TransparentDiffView` 还会把 split 模式下“缺失行”的斜线填充替换为空白，并从当前 `TreeThemeTokens` 拉取 diff 增删背景色（`diff_add_bg` / `diff_remove_bg` / `diff_add_char_bg` / `diff_remove_char_bg`）。这些 token 内置 DARK/LIGHT 两套，并由 `terminal.detect_tree_theme_name()`（OSC-11）自动选择。
 
 ### VCS 命令速查表
 
@@ -325,14 +346,14 @@ src/diff_tree_view/
 
 ### v0.1 — MVP
 
-- [ ] 项目脚手架 (uv, Textual app skeleton, CLI)
-- [ ] VCS 后端抽象 + 自动检测
-- [ ] jj 后端（只读）
-- [ ] git 后端（只读）
-- [ ] 带统计和 M/A/D/R 的变更树小部件
-- [ ] 集成 `textual-diff-view`（分列 + 统一，换行切换）
+- [x] 项目脚手架 (uv, Textual app skeleton, CLI)
+- [x] VCS 后端抽象 + 自动检测
+- [x] jj 后端（只读）
+- [x] git 后端（只读）
+- [x] 带统计和 M/A/D/R 的变更树小部件
+- [x] 集成 `textual-diff-view`（分列 + 统一，换行切换）
 - [ ] 响应式布局（分列 / 统一 / 标签）
-- [ ] 文件监听器 (`watchfiles`) 自动刷新树 + diff
+- [x] 文件监听器 (`watchfiles`) 自动刷新树 + diff
 - [ ] 最小配置：`[ui]`、`[vcs.jj.revset]`、`[vcs.watch]`、`[keys]`、`[comment.clipboard]`
 
 ### v0.2 — 审查工作流
