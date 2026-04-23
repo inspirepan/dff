@@ -2,7 +2,7 @@
 
 A terminal UI diff viewer for **jujutsu** and **git**, inspired by the VCS panel
 in VS Code. Run `dff` inside a repo and get an interactive, keyboard-driven
-review experience — tree on the left, rich diff on the right. Inline comment
+review experience — tree on top, rich diff below. Inline comment
 workflow and copy-as-prompt are **[ ] TODO** and not shipped yet.
 
 Status: **planning / pre-alpha**. This README doubles as the roadmap.
@@ -96,7 +96,7 @@ Notes on the mockup:
 - Auto-detect which backend to use based on `.jj` / `.git` in the repo.
 - Explicit override via `--backend jj|git` or config.
 
-### Change tree (left panel)
+### Change tree (top panel)
 
 - Groups:
   - jj: one group per change in the revset range.
@@ -108,7 +108,7 @@ Notes on the mockup:
 - Glob-based ignore list (lock files, `dist/**`, etc. shown but de-emphasized).
 - Keyboard navigation: `j/k` or arrow keys, `J/K` for next/prev change.
 
-### Diff view (right panel)
+### Diff view (bottom panel)
 
 Built on top of
 [`textual-diff-view`](https://github.com/batrachianai/textual-diff-view).
@@ -163,7 +163,7 @@ commands in another terminal.
 
 ### Responsive layout
 
-Status: **[ ] TODO** (planned behavior below; current app only auto-forces unified mode when diff panel width is too narrow for split).
+Status: **[ ] TODO** (planned behavior below; current app stacks tree above diff and only auto-forces unified mode when the diff panel width is too narrow for split).
 
 Like a responsive web page, `dff` reflows based on terminal width:
 

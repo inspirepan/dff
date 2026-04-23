@@ -5,7 +5,7 @@ from typing import ClassVar
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.containers import Vertical, VerticalScroll
 
 from diff_tree_view.config import UISettings
 from diff_tree_view.models import Change, FileChange, FileSides
@@ -50,7 +50,7 @@ class DiffTreeViewApp(App[None]):
 
     def compose(self) -> ComposeResult:
         with Vertical(id="app-shell"):
-            with Horizontal(id="panes"):
+            with Vertical(id="panes"):
                 yield ChangeTree(self.changes, ui=self.ui)
                 yield DiffPanel(ui=self.ui, id="diff-panel")
             yield StatusBar(id="status-bar", ui=self.ui)

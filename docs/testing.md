@@ -216,6 +216,7 @@ uv run pytest -m smoke              # CI-only tmux smoke layer
 
 ### 5.1 Responsive layout (`layout.py`)
 
+- [x] Current default app layout stacks tree above diff, with the status bar pinned below both panes.
 - [ ] Width ≥ 140 → tree + split diff + comment bar simultaneously.
 - [ ] 100 ≤ width < 140 → tree + unified diff.
 - [ ] Width < 100 → tabs; `Tab` switches tree ↔ diff; comment bar
